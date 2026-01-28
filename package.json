@@ -46,7 +46,7 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "arctis-usb-finder": "^0.0.24",
+    "arctis-usb-finder": "github:dragon788/arctis-usb-finder#add-nova-elite-and-multi-device-support",
     "electron-squirrel-startup": "^1.0.1",
     "winreg": "^1.2.5"
   }
