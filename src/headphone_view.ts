@@ -66,12 +66,18 @@ const EMOJI = {
   HEADPHONES: '\uD83C\uDFA7',      // 🎧
   CHARGING: '\uD83D\uDD0C',        // 🔌
   NO_CONN: '\uD83D\uDEAB',         // 🚫 (prohibited - disconnected indicator)
+  NO_ENTRY: '\u26D4',              // ⛔ (no entry - dead battery warning)
+  FIRE: '\uD83D\uDD25',            // 🔥 (fire - potential danger)
 };
+
+// Battery health status
+export type BatteryHealth = 'healthy' | 'suspect' | 'dead';
 
 // displayName is computed by tray.ts based on device count (e.g., "Elite", "E", "E1", "P2")
 // maxModelLen is used for alignment in the menu
 // hasAny100Percent: true if any connected device has 100% battery (for alignment)
-function exportView(headphone: SimpleHeadphone, displayName: string, maxModelLen: number, hasAny100Percent: boolean): TrayInfo {
+// battery2Health: optional health status for the base/spare battery
+function exportView(headphone: SimpleHeadphone, displayName: string, maxModelLen: number, hasAny100Percent: boolean, battery2Health?: BatteryHealth): TrayInfo {
   // Check for base station battery (show even if headset not connected)
   let percentage2: number | undefined;
   if (headphone.batteryPercent2 !== undefined) {
@@ -96,22 +102,36 @@ function exportView(headphone: SimpleHeadphone, displayName: string, maxModelLen
     const alignmentSpace = hasAny100Percent ? ' ' : '';
     let label = `${paddedModel}  ${EMOJI.NO_CONN} No Conn ${alignmentSpace}`;
     if (hasBattery && percentage2 !== undefined) {
-      const baseIcon = percentage2 === 0 ? EMOJI.BATTERY_LOW : EMOJI.BATTERY_FULL;
-      label += `    Base: ${baseIcon} ${percentage2}%`;
+      if (battery2Health === 'dead') {
+        // Dead battery: show warning emojis instead of percentage
+        label += `    Base: ${EMOJI.NO_ENTRY}${EMOJI.BATTERY_LOW}${EMOJI.FIRE} DEAD`;
+      } else {
+        const baseIcon = percentage2 === 0 ? EMOJI.BATTERY_LOW : EMOJI.BATTERY_FULL;
+        label += `    Base: ${baseIcon} ${percentage2}%`;
+      }
     }
 
     // Build tray segment - only show if base battery is present
     // Use muted + no conn emojis: "🔇🚫Elite 🔋100%"
     let traySegment: string | null = null;
     if (hasBattery && percentage2 !== undefined) {
-      const baseIcon = percentage2 === 0 ? EMOJI.BATTERY_LOW : EMOJI.BATTERY_FULL;
-      traySegment = `${EMOJI.MUTED}${EMOJI.NO_CONN}${displayName} ${baseIcon}${percentage2}%`;
+      if (battery2Health === 'dead') {
+        // Dead battery in tray: show warning
+        traySegment = `${EMOJI.MUTED}${EMOJI.NO_CONN}${displayName} ${EMOJI.NO_ENTRY}${EMOJI.FIRE}DEAD`;
+      } else {
+        const baseIcon = percentage2 === 0 ? EMOJI.BATTERY_LOW : EMOJI.BATTERY_FULL;
+        traySegment = `${EMOJI.MUTED}${EMOJI.NO_CONN}${displayName} ${baseIcon}${percentage2}%`;
+      }
     }
 
     // Build tooltip segment with base battery info
     let tooltipSegment = `${shortModel}: No Conn`;
     if (hasBattery && percentage2 !== undefined) {
-      tooltipSegment += ` / Base: ${percentage2}%`;
+      if (battery2Health === 'dead') {
+        tooltipSegment += ` / Base: DEAD BATTERY - Replace immediately!`;
+      } else {
+        tooltipSegment += ` / Base: ${percentage2}%`;
+      }
     }
 
     return {
@@ -147,22 +167,36 @@ function exportView(headphone: SimpleHeadphone, displayName: string, maxModelLen
 
   // Add base station battery if available (icon before % for consistency with tray)
   if (percentage2 !== undefined) {
-    const baseIcon = percentage2 === 0 ? EMOJI.BATTERY_LOW : (percentage2 === 100 ? EMOJI.BATTERY_FULL : EMOJI.CHARGING);
-    text += `     Base: ${baseIcon} ${percentage2}%`;
+    if (battery2Health === 'dead') {
+      // Dead battery: show warning emojis
+      text += `     Base: ${EMOJI.NO_ENTRY}${EMOJI.BATTERY_LOW}${EMOJI.FIRE} DEAD`;
+    } else {
+      const baseIcon = percentage2 === 0 ? EMOJI.BATTERY_LOW : (percentage2 === 100 ? EMOJI.BATTERY_FULL : EMOJI.CHARGING);
+      text += `     Base: ${baseIcon} ${percentage2}%`;
+    }
   }
 
   // Build tray segment: "🎧Elite 🔋79%/🔋100%" (icon before % consistently)
   const headsetIcon = (percentage === 0 || headphone.isDischarging) ? EMOJI.BATTERY_LOW : EMOJI.BATTERY_FULL;
   let traySegment = `${EMOJI.HEADPHONES}${displayName} ${headsetIcon}${percentage}%`;
   if (percentage2 !== undefined) {
-    const baseIcon = percentage2 === 0 ? EMOJI.BATTERY_LOW : EMOJI.BATTERY_FULL;
-    traySegment += `/${baseIcon}${percentage2}%`;
+    if (battery2Health === 'dead') {
+      // Dead battery in tray
+      traySegment += `/${EMOJI.NO_ENTRY}${EMOJI.FIRE}DEAD`;
+    } else {
+      const baseIcon = percentage2 === 0 ? EMOJI.BATTERY_LOW : EMOJI.BATTERY_FULL;
+      traySegment += `/${baseIcon}${percentage2}%`;
+    }
   }
 
   // Build tooltip segment
   let tooltipSegment = `${shortModel}: ${percentage}%`;
   if (percentage2 !== undefined) {
-    tooltipSegment += ` / Base: ${percentage2}%`;
+    if (battery2Health === 'dead') {
+      tooltipSegment += ` / Base: DEAD BATTERY - Replace immediately!`;
+    } else {
+      tooltipSegment += ` / Base: ${percentage2}%`;
+    }
   }
 
   return {
