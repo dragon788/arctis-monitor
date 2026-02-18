@@ -72,8 +72,8 @@ function computeDisplayNames(headphones: SimpleHeadphone[]): string[] {
 
 // Check battery2 health for a device
 // Returns 'dead' if battery stuck at 0-1% for multiple checks, 'healthy' otherwise
-function checkBattery2Health(deviceKey: string, percentage2: number | undefined): BatteryHealth {
-  if (percentage2 === undefined) {
+function checkBattery2Health(deviceKey: string, percentage2: number | undefined, hasBattery2: boolean | undefined): BatteryHealth {
+  if (percentage2 === undefined || hasBattery2 === false) {
     // No battery2 present - clear any tracking
     battery2Tracking.delete(deviceKey);
     deadBatteryAlerts.delete(deviceKey);
@@ -172,7 +172,7 @@ const buildTrayMenu = (force: boolean = false, debug: boolean = false) => {
   headphones.forEach((headphone, i) => {
     // Use path as unique key, fallback to index if path not available
     const deviceKey = headphone.path || `device-${i}`;
-    const health = checkBattery2Health(deviceKey, headphone.batteryPercent2);
+    const health = checkBattery2Health(deviceKey, headphone.batteryPercent2, headphone.hasBattery2);
     battery2HealthMap.set(i, health);
   });
 
